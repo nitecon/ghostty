@@ -52,7 +52,7 @@ fn embeddedGetProcAddress(name: [*:0]const u8) callconv(.c) ?GlProc {
     return @ptrCast(@alignCast(ptr));
 }
 
-fn enterEmbedded(surface: *apprt.Surface) !void {
+pub fn enterEmbedded(surface: *apprt.Surface) !void {
     const platform = switch (surface.platform) {
         .opengl => |*value| value,
         else => return error.OpenGLPlatformRequired,
@@ -226,7 +226,7 @@ pub fn surfaceInit(surface: *apprt.Surface) !void {
 pub fn finalizeSurfaceInit(self: *const OpenGL, surface: *apprt.Surface) !void {
     _ = self;
     _ = surface;
-    if (comptime is_embedded) leaveEmbedded();
+    if (comptime is_embedded and builtin.os.tag != .linux) leaveEmbedded();
 }
 
 /// Callback called by renderer.Thread when it begins.
@@ -244,6 +244,7 @@ pub fn threadEnter(self: *const OpenGL, surface: *apprt.Surface) !void {
         },
 
         apprt.embedded => {
+            if (comptime builtin.os.tag == .linux) return;
             try enterEmbedded(surface);
             errdefer leaveEmbedded();
             try prepareContext(&embeddedGetProcAddress);
@@ -264,6 +265,7 @@ pub fn threadExit(self: *const OpenGL) void {
         },
 
         apprt.embedded => {
+            if (comptime builtin.os.tag == .linux) return;
             leaveEmbedded();
         },
     }

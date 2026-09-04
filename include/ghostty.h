@@ -1363,6 +1363,8 @@ GHOSTTY_API float ghostty_surface_font_size(ghostty_surface_t);
 GHOSTTY_API bool ghostty_surface_font_size_adjusted(ghostty_surface_t);
 GHOSTTY_API void ghostty_surface_refresh(ghostty_surface_t);
 GHOSTTY_API void ghostty_surface_draw(ghostty_surface_t);
+GHOSTTY_API void ghostty_surface_display_realized(ghostty_surface_t);
+GHOSTTY_API void ghostty_surface_display_unrealized(ghostty_surface_t);
 // cmux fork: delete when upstream exposes a synchronous render tick for
 // embedders that drive rendering from a platform display callback.
 GHOSTTY_API void ghostty_surface_render_now(ghostty_surface_t);

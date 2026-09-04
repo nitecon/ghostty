@@ -40,6 +40,10 @@ pub const ExternalFrameColorSpace = renderer.external_frame.ColorSpace;
 pub const ExternalFrame = renderer.external_frame.Frame;
 
 pub const App = struct {
+    /// GtkGLArea contexts are main-thread-only. Linux embedders therefore use
+    /// the same app-thread presentation path as Ghostty's native GTK runtime.
+    pub const must_draw_from_app_thread = builtin.os.tag == .linux;
+
     /// Because we only expect the embedding API to be used in embedded
     /// environments, the options are extern so that we can expose it
     /// directly to a C callconv and not pay for any translation costs.
@@ -1387,10 +1391,47 @@ pub const Surface = struct {
     }
 
     pub fn draw(self: *Surface) void {
+        if (comptime builtin.os.tag == .linux) {
+            switch (self.platform) {
+                .opengl => renderer.OpenGL.enterEmbedded(self) catch |err| {
+                    log.err("error entering Linux embedded OpenGL context err={}", .{err});
+                    return;
+                },
+                else => {},
+            }
+        }
         self.core_surface.draw() catch |err| {
             log.err("error in draw err={}", .{err});
             return;
         };
+    }
+
+    pub fn displayRealized(self: *Surface) void {
+        if (comptime builtin.os.tag == .linux) {
+            switch (self.platform) {
+                .opengl => renderer.OpenGL.enterEmbedded(self) catch |err| {
+                    log.err("error entering realized Linux OpenGL context err={}", .{err});
+                    return;
+                },
+                else => {},
+            }
+        }
+        self.core_surface.renderer.displayRealized() catch |err| {
+            log.err("error realizing embedded display err={}", .{err});
+        };
+    }
+
+    pub fn displayUnrealized(self: *Surface) void {
+        if (comptime builtin.os.tag == .linux) {
+            switch (self.platform) {
+                .opengl => renderer.OpenGL.enterEmbedded(self) catch |err| {
+                    log.err("error entering unrealized Linux OpenGL context err={}", .{err});
+                    return;
+                },
+                else => {},
+            }
+        }
+        self.core_surface.renderer.displayUnrealized();
     }
 
     pub fn renderNow(self: *Surface) void {
@@ -3081,6 +3122,14 @@ pub const CAPI = struct {
     /// call as soon as possible (NOW if possible).
     export fn ghostty_surface_draw(surface: *Surface) void {
         surface.draw();
+    }
+
+    export fn ghostty_surface_display_realized(surface: *Surface) void {
+        surface.displayRealized();
+    }
+
+    export fn ghostty_surface_display_unrealized(surface: *Surface) void {
+        surface.displayUnrealized();
     }
 
     /// Perform a full render cycle synchronously from the calling thread.
