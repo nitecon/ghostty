@@ -269,13 +269,14 @@ pub const App = struct {
         self: *App,
         opts: Surface.Options,
         scrollback_limit_bytes: usize,
+        replay_output: []const u8,
     ) !*Surface {
         // Grab a surface allocation because we're going to need it.
         var surface = try self.core_app.alloc.create(Surface);
         errdefer self.core_app.alloc.destroy(surface);
 
         // Create the surface
-        try surface.init(self, opts, scrollback_limit_bytes);
+        try surface.init(self, opts, scrollback_limit_bytes, replay_output);
         return surface;
     }
 
@@ -825,6 +826,8 @@ test "embedded surface teardown completes before a retained action returns" {
 }
 
 pub const Surface = struct {
+    /// Borrowed only during synchronous initialization; applied before the IO thread starts.
+    replay_output: []const u8 = &.{},
     app: *App,
     platform: Platform,
     userdata: ?*anyopaque = null,
@@ -927,9 +930,11 @@ pub const Surface = struct {
         app: *App,
         opts: Options,
         scrollback_limit_bytes: usize,
+        replay_output: []const u8,
     ) !void {
         self.* = .{
             .app = app,
+            .replay_output = replay_output,
             .platform = try .init(opts.platform_tag, opts.platform),
             .userdata = opts.userdata,
             .core_surface = undefined,
@@ -2484,12 +2489,28 @@ pub const CAPI = struct {
         };
     }
 
+    /// Seed rendered history before child IO starts, preserving the existing options ABI and launch policy.
+    /// The embedder supplies trusted/normalized VT and retains the borrowed bytes until this returns.
+    export fn ghostty_surface_new_with_replay(
+        app: *App,
+        opts: *const apprt.Surface.Options,
+        output: ?[*]const u8,
+        output_len: usize,
+    ) ?*Surface {
+        if (output_len > 256 * 1024 or (output == null and output_len != 0)) return null;
+        const bytes = if (output) |ptr| ptr[0..output_len] else &.{};
+        return app.newSurface(opts.*, 0, bytes) catch |err| {
+            log.err("error initializing replay surface err={}", .{err});
+            return null;
+        };
+    }
+
     fn surface_new_(
         app: *App,
         opts: *const apprt.Surface.Options,
         scrollback_limit_bytes: usize,
     ) !*Surface {
-        return try app.newSurface(opts.*, scrollback_limit_bytes);
+        return try app.newSurface(opts.*, scrollback_limit_bytes, &.{});
     }
 
     export fn ghostty_surface_free(ptr: *Surface) void {

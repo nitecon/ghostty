@@ -1332,6 +1332,11 @@ GHOSTTY_API ghostty_surface_config_s ghostty_surface_config_new();
 
 GHOSTTY_API ghostty_surface_t ghostty_surface_new(ghostty_app_t,
                                                      const ghostty_surface_config_s*);
+// Seed normalized VT output before child IO starts without changing configured launch behavior.
+// Bytes are borrowed until return and capped at 256 KiB; the caller must remove effectful controls.
+GHOSTTY_API ghostty_surface_t ghostty_surface_new_with_replay(
+    ghostty_app_t, const ghostty_surface_config_s*, const char*, uintptr_t);
+
 // cmux fork: create a surface with an embedder-owned scrollback upper bound
 // without changing ghostty_surface_config_s's public ABI. A zero limit inherits
 // the configured scrollback-limit; a nonzero limit can only lower it.

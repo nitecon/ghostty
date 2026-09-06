@@ -998,6 +998,15 @@ pub fn init(
     if (comptime apprt.runtime == apprt.embedded)
         self.renderer_thread.started.waitUncancelable(global.io());
 
+    // cmux embedder replay is output, never child input. The renderer is initialized and
+    // its watcher is armed, while no child IO can race the restored history yet.
+    if (comptime apprt.runtime == apprt.embedded) {
+        if (rt_surface.replay_output.len != 0) {
+            self.io.processOutput(rt_surface.replay_output);
+        }
+        rt_surface.replay_output = &.{};
+    }
+
     // Start our IO thread
     self.io_thr = try std.Thread.spawn(
         .{},
