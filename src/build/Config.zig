@@ -24,6 +24,9 @@ wasm_target: WasmTarget,
 
 /// Comptime interfaces
 app_runtime: ApprtRuntime = .none,
+/// Embedded hosts with app-thread-owned graphics contexts (e.g. GtkGLArea)
+/// opt in so scheduling and GL lifetime never transfer to the renderer thread.
+embedded_app_thread_render: bool = false,
 renderer: RendererBackend = .opengl,
 font_backend: FontBackend = .freetype,
 
@@ -158,6 +161,12 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         "app-runtime",
         "The app runtime to use. Not all values supported on all platforms.",
     ) orelse ApprtRuntime.default(target.result);
+
+    config.embedded_app_thread_render = b.option(
+        bool,
+        "embedded-app-thread-render",
+        "Keep embedded rendering and graphics context lifetime on the app thread.",
+    ) orelse false;
 
     config.renderer = b.option(
         RendererBackend,
@@ -584,6 +593,7 @@ pub fn addOptions(self: *const Config, step: *std.Build.Step.Options) !void {
     step.addOption(bool, "simd", self.simd);
     step.addOption(bool, "i18n", self.i18n);
     step.addOption(ApprtRuntime, "app_runtime", self.app_runtime);
+    step.addOption(bool, "embedded_app_thread_render", self.embedded_app_thread_render);
     step.addOption(FontBackend, "font_backend", self.font_backend);
     step.addOption(RendererBackend, "renderer", self.renderer);
     step.addOption(ExeEntrypoint, "exe_entrypoint", self.exe_entrypoint);
@@ -680,6 +690,7 @@ pub fn fromOptions() Config {
         .version = options.app_version,
         .flatpak = options.flatpak,
         .app_runtime = std.meta.stringToEnum(ApprtRuntime, @tagName(options.app_runtime)).?,
+        .embedded_app_thread_render = options.embedded_app_thread_render,
         .font_backend = std.meta.stringToEnum(FontBackend, @tagName(options.font_backend)).?,
         .renderer = std.meta.stringToEnum(RendererBackend, @tagName(options.renderer)).?,
         .snap = options.snap,

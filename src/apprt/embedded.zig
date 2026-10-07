@@ -6,6 +6,7 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
+const build_config = @import("../build_config.zig");
 const assert = @import("../quirks.zig").inlineAssert;
 const Allocator = std.mem.Allocator;
 const objc = @import("objc");
@@ -40,9 +41,11 @@ pub const ExternalFrameColorSpace = renderer.external_frame.ColorSpace;
 pub const ExternalFrame = renderer.external_frame.Frame;
 
 pub const App = struct {
-    /// GtkGLArea contexts are main-thread-only. Linux embedders therefore use
-    /// the same app-thread presentation path as Ghostty's native GTK runtime.
-    pub const must_draw_from_app_thread = builtin.os.tag == .linux;
+    /// Linux embedders retain app-thread presentation. Hosts on other platforms
+    /// opt in when their context belongs to the app thread, as with GtkGLArea.
+    /// The same contract controls scheduling, GL initialization, and teardown.
+    pub const must_draw_from_app_thread = builtin.os.tag == .linux or
+        build_config.embedded_app_thread_render;
 
     /// Because we only expect the embedding API to be used in embedded
     /// environments, the options are extern so that we can expose it
@@ -1396,10 +1399,10 @@ pub const Surface = struct {
     }
 
     pub fn draw(self: *Surface) void {
-        if (comptime builtin.os.tag == .linux) {
+        if (comptime App.must_draw_from_app_thread) {
             switch (self.platform) {
                 .opengl => renderer.OpenGL.enterEmbedded(self) catch |err| {
-                    log.err("error entering Linux embedded OpenGL context err={}", .{err});
+                    log.err("error entering app-thread embedded OpenGL context err={}", .{err});
                     return;
                 },
                 else => {},
@@ -1412,10 +1415,10 @@ pub const Surface = struct {
     }
 
     pub fn displayRealized(self: *Surface) void {
-        if (comptime builtin.os.tag == .linux) {
+        if (comptime App.must_draw_from_app_thread) {
             switch (self.platform) {
                 .opengl => renderer.OpenGL.enterEmbedded(self) catch |err| {
-                    log.err("error entering realized Linux OpenGL context err={}", .{err});
+                    log.err("error entering realized app-thread OpenGL context err={}", .{err});
                     return;
                 },
                 else => {},
@@ -1427,10 +1430,10 @@ pub const Surface = struct {
     }
 
     pub fn displayUnrealized(self: *Surface) void {
-        if (comptime builtin.os.tag == .linux) {
+        if (comptime App.must_draw_from_app_thread) {
             switch (self.platform) {
                 .opengl => renderer.OpenGL.enterEmbedded(self) catch |err| {
-                    log.err("error entering unrealized Linux OpenGL context err={}", .{err});
+                    log.err("error entering unrealized app-thread OpenGL context err={}", .{err});
                     return;
                 },
                 else => {},
