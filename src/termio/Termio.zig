@@ -992,6 +992,11 @@ pub const ThreadData = struct {
     }
 };
 
+/// Return the backend-owned child root PID, or zero when unavailable.
+pub fn getChildPid(self: *Termio) u64 {
+    return self.backend.getChildPid();
+}
+
 /// Get information about the process(es) attached to the backend. Returns
 /// `null` if there was an error getting the information or the information is
 /// not available on a particular platform.

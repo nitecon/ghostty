@@ -119,6 +119,14 @@ pub const Backend = union(Kind) {
         }
     }
 
+    /// Return the owned child root PID, or zero for a backend without a child.
+    pub fn getChildPid(self: *Backend) u64 {
+        return switch (self.*) {
+            .exec => |*exec| exec.getChildPid(),
+            .manual => 0,
+        };
+    }
+
     /// Get information about the process(es) attached to the backend. Returns
     /// `null` if there was an error getting the information or the information
     /// is not available on a particular platform.

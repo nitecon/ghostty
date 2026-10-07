@@ -4207,6 +4207,12 @@ pub const CAPI = struct {
         };
     }
 
+    /// Return the spawned root child PID, not the PTY foreground process.
+    /// Call on the surface owner thread; zero means unknown or exited.
+    export fn ghostty_surface_child_pid(surface: *Surface) u64 {
+        return surface.core_surface.getChildPid();
+    }
+
     /// Returns the PID of the foreground process for the surface PTY.
     export fn ghostty_surface_foreground_pid(surface: *Surface) u64 {
         return surface.core_surface.getProcessInfo(.foreground_pid) orelse 0;

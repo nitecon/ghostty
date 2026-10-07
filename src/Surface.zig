@@ -8118,6 +8118,13 @@ fn presentSurface(self: *Surface) !void {
     );
 }
 
+/// Return the spawned child root PID, or zero when no live child is known.
+/// Called on the surface owner thread; the backend identity is atomic.
+pub fn getChildPid(self: *Surface) u64 {
+    if (self.child_exited) return 0;
+    return self.io.getChildPid();
+}
+
 /// Get information about the process(es) running within the surface. Returns
 /// `null` if there was an error getting the information or the information is
 /// not available on a particular platform.

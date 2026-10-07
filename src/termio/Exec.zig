@@ -148,6 +148,7 @@ pub fn threadEnter(
     // Setup our threadata backend state to be our own
     td.backend = .{ .exec = .{
         .start = process_start,
+        .child_pid = &self.subprocess.child_pid,
         .write_stream = stream,
         .process = process,
         .read_thread = read_thread,
@@ -276,6 +277,7 @@ fn processExitCommon(td: *termio.Termio.ThreadData, exit_code: u32) void {
     assert(td.backend == .exec);
     const execdata = &td.backend.exec;
     execdata.exited = true;
+    if (execdata.child_pid) |pid| pid.store(0, .release);
 
     // Determine how long the process was running for.
     const runtime_ms: u64 = @max(
@@ -500,6 +502,10 @@ pub const ThreadData = struct {
     start: std.Io.Timestamp,
     exited: bool = false,
 
+    /// The subprocess owns this atomic; the watcher clears it before notifying
+    /// the UI of exit. It outlives the IO thread and all its callbacks.
+    child_pid: ?*std.atomic.Value(u64) = null,
+
     /// The data stream is the main IO for the pty.
     write_stream: xev.Stream,
 
@@ -588,6 +594,10 @@ const Subprocess = struct {
     screen_size: renderer.ScreenSize,
     pty: ?Pty = null,
     process: ?Process = null,
+
+    /// Published root process identity for UI-thread queries. Never exposes
+    /// Windows HANDLE values or reads mutable Command state across threads.
+    child_pid: std.atomic.Value(u64) = .init(0),
 
     rt_pre_exec_info: Command.RtPreExecInfo,
     rt_post_fork_info: Command.RtPostForkInfo,
@@ -1093,6 +1103,11 @@ const Subprocess = struct {
         log.info("started subcommand path={s} pid={?}", .{ self.args[0], cmd.pid });
 
         self.process = .{ .fork_exec = cmd };
+        const child_pid: u64 = if (cmd.pid) |pid| switch (builtin.os.tag) {
+            .windows => windows.exp.kernel32.GetProcessId(pid),
+            else => if (pid > 0) @intCast(pid) else 0,
+        } else 0;
+        self.child_pid.store(child_pid, .release);
         return switch (builtin.os.tag) {
             .windows => .{
                 .read = pty.out_pipe,
@@ -1117,6 +1132,7 @@ const Subprocess = struct {
     /// Called to notify that we exited externally so we can unset our
     /// running state.
     pub fn externalExit(self: *Subprocess) void {
+        self.child_pid.store(0, .release);
         self.process = null;
     }
 
@@ -1125,6 +1141,7 @@ const Subprocess = struct {
     /// for it to terminate, so it will not block.
     /// This does not close the pty.
     pub fn stop(self: *Subprocess) void {
+        self.child_pid.store(0, .release);
         switch (self.process orelse return) {
             .fork_exec => |*cmd| {
                 // Note: this will also wait for the command to exit, so
@@ -2337,6 +2354,12 @@ fn appendEnvAlways(
         std.fs.path.delimiter,
         value,
     });
+}
+
+/// Return the spawned root PID, or zero before spawn and after observed exit.
+/// Safe for UI queries while the IO thread starts or stops the subprocess.
+pub fn getChildPid(self: *Exec) u64 {
+    return self.subprocess.child_pid.load(.acquire);
 }
 
 /// Get information about the process(es) running within the backend. Returns

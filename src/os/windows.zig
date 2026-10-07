@@ -237,6 +237,8 @@ pub const exp = struct {
             hHandle: HANDLE,
             dwMilliseconds: DWORD,
         ) callconv(.winapi) DWORD;
+        /// Return the process identifier represented by an owned process handle.
+        pub extern "kernel32" fn GetProcessId(hProcess: HANDLE) callconv(.winapi) DWORD;
         pub extern "kernel32" fn GetExitCodeProcess(
             hProcess: HANDLE,
             lpExitCode: *DWORD,

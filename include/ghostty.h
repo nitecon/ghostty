@@ -1431,6 +1431,10 @@ GHOSTTY_API bool ghostty_surface_scroll_to_row_if_revision(
     uint64_t,
     uint64_t,
     ghostty_surface_scrollbar_s*);
+// Spawned root child process ID (never a Windows HANDLE). Zero when the
+// child is unknown or its exit has been observed. Call on the surface owner
+// thread. This differs from the current PTY foreground process.
+GHOSTTY_API uint64_t ghostty_surface_child_pid(ghostty_surface_t);
 GHOSTTY_API uint64_t ghostty_surface_foreground_pid(ghostty_surface_t);
 GHOSTTY_API ghostty_string_s ghostty_surface_tty_name(ghostty_surface_t);
 // cmux fork: export the Ghostty grid as a compact render-grid JSON frame for
