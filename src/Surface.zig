@@ -4389,6 +4389,21 @@ pub fn keyCallback(
     self: *Surface,
     event_orig: input.KeyEvent,
 ) !InputEffect {
+    return self.keyCallbackWithBindings(event_orig, true);
+}
+
+/// Encode a process-directed key with the current terminal protocol, bypassing host keybindings.
+/// Like keyCallback, call on the runtime thread; allocation/encoding failures propagate to the caller.
+pub fn keyToProcess(self: *Surface, event_orig: input.KeyEvent) !InputEffect {
+    return self.keyCallbackWithBindings(event_orig, false);
+}
+
+/// Share native event state, protocol encoding and PTY delivery for normal and process-directed input.
+fn keyCallbackWithBindings(
+    self: *Surface,
+    event_orig: input.KeyEvent,
+    handle_bindings: bool,
+) !InputEffect {
     // log.warn("text keyCallback event={}", .{event_orig});
 
     // Apply key remappings to transform modifiers before any processing.
@@ -4427,7 +4442,7 @@ pub fn keyCallback(
     // Handle keybindings first. We need to handle this on all events
     // (press, repeat, release) because a press may perform a binding but
     // a release should not encode if we consumed the press.
-    if (try self.maybeHandleBinding(
+    if (handle_bindings) if (try self.maybeHandleBinding(
         event,
         if (insp_ev) |*ev| ev else null,
     )) |v| return v;

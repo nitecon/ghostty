@@ -1472,6 +1472,10 @@ GHOSTTY_API void ghostty_surface_set_color_scheme(ghostty_surface_t,
 GHOSTTY_API ghostty_input_mods_e ghostty_surface_key_translation_mods(ghostty_surface_t,
                                                                          ghostty_input_mods_e);
 GHOSTTY_API bool ghostty_surface_key(ghostty_surface_t, ghostty_input_key_s);
+// cmux fork: encode an explicit process shortcut using the current terminal
+// protocol without invoking host keybindings. Call on the runtime thread with
+// a live surface and event text valid until return; false means no key was sent.
+GHOSTTY_API bool ghostty_surface_key_to_process(ghostty_surface_t, ghostty_input_key_s);
 GHOSTTY_API bool ghostty_surface_key_is_binding(ghostty_surface_t,
                                                    ghostty_input_key_s,
                                                    ghostty_binding_flags_e*);

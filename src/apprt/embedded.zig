@@ -4289,6 +4289,17 @@ pub const CAPI = struct {
         };
     }
 
+    /// Encode and deliver an explicit process shortcut without invoking terminal keybindings.
+    /// The surface and event text must remain valid for this runtime-thread call. Returns false on failure.
+    export fn ghostty_surface_key_to_process(surface: *Surface, event: KeyEvent) bool {
+        const input_event = event.keyEvent().core() orelse return false;
+        const effect = surface.core_surface.keyToProcess(input_event) catch |err| {
+            log.warn("error processing direct key event err={}", .{err});
+            return false;
+        };
+        return effect != .ignored;
+    }
+
     /// Returns true if the given key event would trigger a binding
     /// if it were sent to the surface right now. The "right now"
     /// is important because things like trigger sequences are only
