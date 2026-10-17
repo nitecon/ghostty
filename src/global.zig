@@ -103,7 +103,10 @@ test "C argv serializes for Windows Args" {
 /// We export the xev backend we want to use so that the rest of
 /// Ghostty can import this once and have access to the proper
 /// backend.
-pub const xev = @import("xev").Dynamic;
+pub const xev = if (builtin.os.tag == .windows)
+    @import("os/xev_windows.zig")
+else
+    @import("xev").Dynamic;
 
 /// Global process state. This is initialized in main() for exe artifacts and
 /// by ghostty_init() for lib artifacts. Most other methods in this file will
