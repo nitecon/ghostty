@@ -104,6 +104,9 @@ fn buildLib(b: *std.Build, module: *std.Build.Module, options: anytype) !*std.Bu
         var flags: std.ArrayList([]const u8) = .empty;
         defer flags.deinit(b.allocator);
         if (target.result.abi == .msvc) {
+            // The private static library has no DLL data import/export boundary.
+            lib.root_module.addCMacro("ONIG_EXTERN", "extern");
+            module.addCMacro("ONIG_EXTERN", "extern");
             try flags.appendSlice(b.allocator, &.{
                 "-fno-sanitize=undefined",
                 "-fno-sanitize-trap=undefined",

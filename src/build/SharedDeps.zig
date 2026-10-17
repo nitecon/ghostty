@@ -355,6 +355,18 @@ pub fn add(
             step.root_module.linkSystemLibrary("oniguruma", dynamic_link_opts);
         } else {
             step.root_module.linkLibrary(oniguruma_dep.artifact("oniguruma"));
+            // The Windows DLL owns this static dependency and its redistribution notice.
+            if (target.result.os.tag == .windows and target.result.abi == .msvc and
+                step.linkage == .dynamic)
+            {
+                if (oniguruma_dep.builder.lazyDependency("oniguruma", .{})) |source| {
+                    b.getInstallStep().dependOn(&b.addInstallFileWithDir(
+                        source.path("COPYING"),
+                        .prefix,
+                        "share/licenses/oniguruma/COPYING",
+                    ).step);
+                }
+            }
             try static_libs.append(
                 b.allocator,
                 oniguruma_dep.artifact("oniguruma").getEmittedBin(),
