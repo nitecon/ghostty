@@ -64,12 +64,13 @@ comptime {
     //      scalar operations are going to be just as good.
     //   2. The C object format target uses strong linkage which
     //      conflits with ours and errors.
-    //   3. Weak COFF builds fatally error because MSVC's linker
-    //      errors when two identical linked symbols exist. MSVC has
-    //      CRT which links so we don't need this there anyways.
+    //   3. MSVC's CRT supplies an optimized memset and rejects this
+    //      duplicate definition for both shared and static libraries.
+    //   4. Other weak COFF builds also reject duplicate symbols.
     const enabled =
         std.simd.suggestVectorLength(u8) != null and
         builtin.object_format != .c and
+        builtin.abi != .msvc and
         !(linkage == .weak and builtin.object_format == .coff);
 
     if (enabled) @export(&memset, .{
